@@ -1,2 +1,44 @@
-# Langchain-Langgraph
-Mini projects and some practice code snippets to learn Langchain and LangGraph 
+# RAG Architecture
+
++-------------------+    document loader    +-------------------------+
+|    Source data     | -------------------> |     list of document    |
++-------------------+                       +-------------------------+
+                                                          |
+                                                      text splitter
+                                                          |
+                                                          v
+                                                     +------------+
+                                                     |   chunks   |
+                                                     +------------+
+                                                          |
+                                                     Embedding Model
+                                                          |
+                                                          v
+                                                    +---------------+
+                                                    |    Vectors    |
+                                                    +---------------+
+                                                          |
+                                                     Embedding Model
+                                                          |
+                                                          v
+                                                +--------------------+
+                                    --------->  |    Vector Store    | --------------
+                                    |           +--------------------+              |                                               |
+                            Semantic Search                                         v
+                                    |                                      +-------------------+
++-------------+            +----------------+                              |  Context + Query  |
+|    Query    | -------->  |    Retriever   |                              +-------------------+
++-------------+            +----------------+                                       |
+                                                                                    v
+                                                                             +------------+
+                                                                             |   Prompt   |
+                                                                             +------------+
+                                                                                    |
+                                                                                    v
+                                                                              +------------+
+                                                                              |    LLM     |
+                                                                              +------------+
+                                                                                    |
+                                                                                    v
+                                                                                 Response
+      
