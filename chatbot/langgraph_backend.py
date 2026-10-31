@@ -1,14 +1,14 @@
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv(), override=True)
+
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Annotated
 from langchain_core.messages import BaseMessage
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.message import add_messages
-from dotenv import find_dotenv, load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
 import sqlite3
-
-load_dotenv(find_dotenv(), override=True)
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.5-flash-lite",

@@ -74,9 +74,10 @@ for thread_id in st.session_state['chat_threads'][::-1]:
         for msg in messages:
             if isinstance(msg, HumanMessage):
                 role='user'
+                msg_content = msg.content
             else:
                 role='assistant'
-            msg_content = extract_AIMessage(msg)
+                msg_content = extract_AIMessage(msg)
             temp_messages.append({'role': role, 'content': msg_content})
 
         st.session_state['message_history'] = temp_messages
