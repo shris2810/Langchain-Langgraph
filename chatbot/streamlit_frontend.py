@@ -1,6 +1,6 @@
 import streamlit as st
 from langgraph_backend import chatbot, retrieve_all_threads
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 import uuid
 
 # utility functions
@@ -38,8 +38,6 @@ def extract_AIMessage(message):
     
 
 
-
-
 # Session Setup
 
 if 'message_history' not in st.session_state:
@@ -75,12 +73,16 @@ for thread_id in st.session_state['chat_threads'][::-1]:
             if isinstance(msg, HumanMessage):
                 role='user'
                 msg_content = msg.content
-            else:
+            elif isinstance(msg, AIMessage):
                 role='assistant'
                 msg_content = extract_AIMessage(msg)
-            temp_messages.append({'role': role, 'content': msg_content})
+            
+            # there will be tool messages bbut we skiped to show 
+            if msg_content:
+                temp_messages.append({'role': role, 'content': msg_content})
 
         st.session_state['message_history'] = temp_messages
+
 
 
 # Main UI
@@ -88,7 +90,7 @@ for thread_id in st.session_state['chat_threads'][::-1]:
 # loading the conversation history
 for message in st.session_state['message_history']:
     with st.chat_message(message['role']):
-        st.text(message['content'])
+        st.markdown(message['content'])
 
 
 user_input = st.chat_input('Type here')
@@ -98,14 +100,21 @@ if user_input:
     # first add the message to message_history
     st.session_state['message_history'].append({'role': 'user', 'content': user_input})
     with st.chat_message('user'):
-        st.text(user_input)
+        st.markdown(user_input)
 
     # response = chatbot.invoke({'messages': [HumanMessage(content=user_input)]}, config=CONFIG) # type: ignore
     # ai_message = response['messages'][-1].content[0]['text']
 
-    CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
+    CONFIG = {
+        "configurable": {"thread_id": st.session_state["thread_id"]},
+        "metadata": {"thread_id": st.session_state["thread_id"]},
+        "run_name": "chat_turn",
+    }
 
     with st.chat_message('assistant'):
+
+        status_holder = {"box": None}
+
         # streaming response of ai
         def parse_stream():
             for message_chunk, metadata in chatbot.stream(
@@ -113,6 +122,22 @@ if user_input:
                 config=CONFIG,
                 stream_mode='messages'
             ):
+                # Lazily create & update the SAME status container when any tool runs
+                if isinstance(message_chunk, ToolMessage):
+                    tool_name = getattr(message_chunk, "name", "tool")
+                    if status_holder["box"] is None:
+                        status_holder["box"] = st.status(
+                            f"🔧 Using `{tool_name}` …", expanded=True
+                        )
+                    else:
+                        status_holder["box"].update(
+                            label=f"🔧 Using `{tool_name}` …",
+                            state="running",
+                            expanded=True,
+                        )
+
+                
+                # Stream ONLY assistant tokens
                 if isinstance(message_chunk, AIMessage):
                     # 1. Safely check if content exists and is a list
                     if hasattr(message_chunk, 'content') and isinstance(message_chunk.content, list):
@@ -127,4 +152,10 @@ if user_input:
         # Stream the safe text fragments directly to the UI
         ai_message = st.write_stream(parse_stream())
 
-        st.session_state['message_history'].append({'role': 'assistant', 'content': ai_message})
+        # Finalize only if a tool was actually used
+        if status_holder["box"] is not None:
+            status_holder["box"].update(
+                label="✅ Tool finished", state="complete", expanded=False
+            )
+        
+    st.session_state['message_history'].append({'role': 'assistant', 'content': ai_message})
